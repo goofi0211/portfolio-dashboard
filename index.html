@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>便當盒投資組合</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>便當盒投資組合</h1>
+      <span id="updated-at" class="updated-at"></span>
+    </header>
+
+    <div id="loading" class="loading">載入資料中...</div>
+    <div id="error" class="error hidden"></div>
+
+    <section id="main-content" class="hidden">
+      <!-- 總覽卡片 -->
+      <div class="summary-grid">
+        <div class="card">
+          <div class="card-label">總市值</div>
+          <div class="card-value" id="total-market-value">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">總成本</div>
+          <div class="card-value" id="total-cost">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">未實現損益</div>
+          <div class="card-value" id="total-pnl">—</div>
+          <div class="card-sub" id="total-pnl-pct">—</div>
+        </div>
+      </div>
+
+      <!-- 圓餅圖 -->
+      <div class="chart-section">
+        <h2>產業配置</h2>
+        <div class="chart-wrapper">
+          <canvas id="industry-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 個股分布圖 -->
+      <div class="treemap-section">
+        <div class="treemap-header">
+          <h2>個股分布圖</h2>
+          <div class="toggle-group">
+            <button class="toggle-btn active" data-mode="daily">今日漲幅</button>
+            <button class="toggle-btn" data-mode="pnl">未實現損益</button>
+          </div>
+        </div>
+        <div id="treemap" class="treemap"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="tooltip" class="tooltip hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
