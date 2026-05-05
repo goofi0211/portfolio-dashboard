@@ -13,6 +13,7 @@ let historyRange      = 'all';
 let contribMode       = 'industry';
 let historyChart      = null;
 let contributionChart = null;
+let top10Chart        = null;
 
 // ── 進入點 ──────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ function render(data) {
   renderSummaryCards(summary, portfolioHistory);
   renderHistoryChart(portfolioHistory);
   renderPieChart(stocks);
+  renderTop10Chart(stocks);
   renderContributionChart(stocks);
   renderTreemap(stocks);
   bindButtons();
@@ -201,6 +203,7 @@ function filterByRange(history, range) {
 // ── 圓餅圖 ───────────────────────────────────────────────
 
 function renderPieChart(stocks) {
+  const colorMap = getIndustryColorMap(stocks);
   const industryMap = {};
   stocks.forEach(s => { const k = s.industry || '其他'; industryMap[k] = (industryMap[k] || 0) + s.marketValue; });
   const labels = Object.keys(industryMap);
@@ -211,12 +214,90 @@ function renderPieChart(stocks) {
     type: 'doughnut',
     data: {
       labels,
-      datasets: [{ data: values, backgroundColor: INDUSTRY_COLORS.slice(0, labels.length), borderColor: '#0f1117', borderWidth: 2 }],
+      datasets: [{ data: values, backgroundColor: labels.map(l => colorMap[l]), borderColor: '#0f1117', borderWidth: 2 }],
     },
     options: {
       plugins: {
         legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 10 } },
         tooltip: { callbacks: { label: ctx => ` ${formatUSD(ctx.parsed)}  (${((ctx.parsed/total)*100).toFixed(1)}%)` } },
+      },
+    },
+  });
+}
+
+// ── 十大持股橫條圖 ──────────────────────────────────────
+
+function getIndustryColorMap(stocks) {
+  const seen = [];
+  stocks.forEach(s => {
+    const k = s.industry || '其他';
+    if (!seen.includes(k)) seen.push(k);
+  });
+  const map = {};
+  seen.forEach((k, i) => { map[k] = INDUSTRY_COLORS[i % INDUSTRY_COLORS.length]; });
+  return map;
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderTop10Chart(stocks) {
+  if (top10Chart) { top10Chart.destroy(); top10Chart = null; }
+
+  const colorMap = getIndustryColorMap(stocks);
+  const top10 = [...stocks]
+    .filter(s => s.marketValue > 0)
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .slice(0, 10);
+
+  const labels       = top10.map(s => s.code);
+  const data         = top10.map(s => +(s.assetRatio * 100).toFixed(2));
+  const marketValues = top10.map(s => s.marketValue);
+  const colors       = top10.map(s => colorMap[s.industry || '其他']);
+
+  top10Chart = new Chart(document.getElementById('top10-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors.map(c => hexToRgba(c, 0.75)),
+        borderColor: colors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => `${items[0].label}  ·  ${top10[items[0].dataIndex].industry || '其他'}`,
+            label: ctx => `  資產比例 ${ctx.parsed.x.toFixed(2)}%　市值 ${formatUSD(marketValues[ctx.dataIndex])}`,
+          },
+          backgroundColor: '#1e2130',
+          borderColor: '#3d4460',
+          borderWidth: 1,
+          titleColor: '#e2e8f0',
+          bodyColor: '#94a3b8',
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#4a5568', font: { size: 11 }, callback: v => v.toFixed(1) + '%' },
+          grid: { color: '#1a1f2e' },
+        },
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 11 } },
+          grid: { display: false },
+        },
       },
     },
   });

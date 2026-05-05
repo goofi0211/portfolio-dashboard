@@ -69,25 +69,33 @@
         </div>
       </div>
 
-      <!-- 產業配置 + 損益貢獻（並排） -->
-      <div class="two-col-grid">
-        <div class="chart-section">
-          <h2>產業配置</h2>
-          <div class="chart-wrapper">
-            <canvas id="industry-chart"></canvas>
+      <!-- 產業配置 -->
+      <div class="chart-section">
+        <h2>產業配置</h2>
+        <div class="chart-wrapper">
+          <canvas id="industry-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 十大持股 -->
+      <div class="chart-section">
+        <h2>十大持股（依市值）</h2>
+        <div class="top10-wrapper">
+          <canvas id="top10-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 損益貢獻 -->
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>損益貢獻</h2>
+          <div class="toggle-group">
+            <button class="toggle-btn active" data-contrib="industry">產業</button>
+            <button class="toggle-btn" data-contrib="stocks">個股</button>
           </div>
         </div>
-        <div class="chart-section">
-          <div class="section-header">
-            <h2>損益貢獻</h2>
-            <div class="toggle-group">
-              <button class="toggle-btn active" data-contrib="industry">產業</button>
-              <button class="toggle-btn" data-contrib="stocks">個股</button>
-            </div>
-          </div>
-          <div class="contribution-wrapper">
-            <canvas id="contribution-chart"></canvas>
-          </div>
+        <div class="contribution-wrapper">
+          <canvas id="contribution-chart"></canvas>
         </div>
       </div>
 

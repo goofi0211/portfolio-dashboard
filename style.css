@@ -120,6 +120,12 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
 
 .two-col-grid .chart-section { margin-bottom: 0; }
 
+/* ── 十大持股圖 ──────────────────────────── */
+.top10-wrapper {
+  position: relative;
+  height: 320px;
+}
+
 /* ── 損益貢獻圖 ──────────────────────────── */
 .contribution-wrapper {
   position: relative;
