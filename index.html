@@ -69,11 +69,22 @@
         </div>
       </div>
 
-      <!-- 產業配置 -->
+      <!-- 資產配置（股票/現金 + 產業配置） -->
       <div class="chart-section">
-        <h2>產業配置</h2>
-        <div class="chart-wrapper">
-          <canvas id="industry-chart"></canvas>
+        <h2>資產配置</h2>
+        <div class="allocation-grid">
+          <div class="allocation-col">
+            <div class="sub-chart-title">股票 / 現金</div>
+            <div class="chart-wrapper">
+              <canvas id="allocation-chart"></canvas>
+            </div>
+          </div>
+          <div class="allocation-col">
+            <div class="sub-chart-title">產業配置</div>
+            <div class="chart-wrapper">
+              <canvas id="industry-chart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
 

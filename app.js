@@ -5,6 +5,14 @@ const INDUSTRY_COLORS = [
   '#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9','#fbbf24',
 ];
 
+const CASH_CODES = ['SGOV'];
+function isCash(s) { return CASH_CODES.includes(s.code) || s.type === '現金'; }
+function stocksOnly(stocks) {
+  const nonCash = stocks.filter(s => !isCash(s));
+  const total   = nonCash.reduce((sum, s) => sum + s.marketValue, 0);
+  return nonCash.map(s => ({ ...s, assetRatio: total > 0 ? s.marketValue / total : 0 }));
+}
+
 let portfolioStocks   = [];
 let portfolioHistory  = [];
 let colorMode         = 'daily';
@@ -44,6 +52,7 @@ function render(data) {
 
   renderSummaryCards(summary, portfolioHistory);
   renderHistoryChart(portfolioHistory);
+  renderAllocationChart(stocks);
   renderPieChart(stocks);
   renderTop10Chart(stocks);
   renderContributionChart(stocks);
@@ -200,12 +209,35 @@ function filterByRange(history, range) {
   return history.filter(h => h.date >= cutoffStr);
 }
 
+// ── 股票/現金配置圖 ──────────────────────────────────────
+
+function renderAllocationChart(stocks) {
+  const cashValue  = stocks.filter(isCash).reduce((sum, s) => sum + s.marketValue, 0);
+  const stockValue = stocks.filter(s => !isCash(s)).reduce((sum, s) => sum + s.marketValue, 0);
+  const total      = cashValue + stockValue;
+
+  new Chart(document.getElementById('allocation-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['股票', '現金'],
+      datasets: [{ data: [stockValue, cashValue], backgroundColor: ['#6366f1', '#f59e0b'], borderColor: '#0f1117', borderWidth: 2 }],
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ` ${formatUSD(ctx.parsed)}  (${(ctx.parsed / total * 100).toFixed(1)}%)` } },
+      },
+    },
+  });
+}
+
 // ── 圓餅圖 ───────────────────────────────────────────────
 
 function renderPieChart(stocks) {
-  const colorMap = getIndustryColorMap(stocks);
+  const filtered = stocksOnly(stocks);
+  const colorMap = getIndustryColorMap(filtered);
   const industryMap = {};
-  stocks.forEach(s => { const k = s.industry || '其他'; industryMap[k] = (industryMap[k] || 0) + s.marketValue; });
+  filtered.forEach(s => { const k = s.industry || '其他'; industryMap[k] = (industryMap[k] || 0) + s.marketValue; });
   const labels = Object.keys(industryMap);
   const values = labels.map(l => industryMap[l]);
   const total  = values.reduce((a, b) => a + b, 0);
@@ -218,7 +250,7 @@ function renderPieChart(stocks) {
     },
     options: {
       plugins: {
-        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 10 } },
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 10 } },
         tooltip: { callbacks: { label: ctx => ` ${formatUSD(ctx.parsed)}  (${((ctx.parsed/total)*100).toFixed(1)}%)` } },
       },
     },
@@ -248,8 +280,9 @@ function hexToRgba(hex, alpha) {
 function renderTop10Chart(stocks) {
   if (top10Chart) { top10Chart.destroy(); top10Chart = null; }
 
-  const colorMap = getIndustryColorMap(stocks);
-  const top10 = [...stocks]
+  const filtered = stocksOnly(stocks);
+  const colorMap = getIndustryColorMap(filtered);
+  const top10 = [...filtered]
     .filter(s => s.marketValue > 0)
     .sort((a, b) => b.marketValue - a.marketValue)
     .slice(0, 10);
@@ -308,11 +341,12 @@ function renderTop10Chart(stocks) {
 function renderContributionChart(stocks) {
   if (contributionChart) { contributionChart.destroy(); contributionChart = null; }
 
+  const filtered = stocksOnly(stocks);
   let labels, values;
 
   if (contribMode === 'industry') {
     const map = {};
-    stocks.forEach(s => {
+    filtered.forEach(s => {
       if (s.unrealizedPnL === null) return;
       const k = s.industry || '其他';
       map[k] = (map[k] || 0) + s.unrealizedPnL;
@@ -321,7 +355,7 @@ function renderContributionChart(stocks) {
     labels = sorted.map(([k]) => k);
     values = sorted.map(([, v]) => v);
   } else {
-    const withPnl = stocks.filter(s => s.unrealizedPnL !== null)
+    const withPnl = filtered.filter(s => s.unrealizedPnL !== null)
       .sort((a, b) => a.unrealizedPnL - b.unrealizedPnL);
     const losers  = withPnl.slice(0, 10);
     const winners = withPnl.slice(-10);
@@ -373,8 +407,9 @@ function renderTreemap(stocks) {
   container.innerHTML = '';
   const W = container.clientWidth, H = container.clientHeight;
 
+  const filtered = stocksOnly(stocks);
   const industryMap = {};
-  stocks.forEach(s => {
+  filtered.forEach(s => {
     const k = s.industry || '其他';
     if (!industryMap[k]) industryMap[k] = [];
     industryMap[k].push(s);

@@ -110,6 +110,22 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
   margin: 0.5rem auto 0;
 }
 
+/* ── 資產配置並排 ─────────────────────────── */
+.allocation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+.sub-chart-title {
+  font-size: 0.78rem;
+  color: #64748b;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
 /* ── 兩欄並排 ────────────────────────────── */
 .two-col-grid {
   display: grid;
@@ -221,6 +237,7 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
 @media (max-width: 900px) {
   .summary-grid    { grid-template-columns: repeat(3, 1fr); }
   .two-col-grid    { grid-template-columns: 1fr; }
+  .allocation-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
