@@ -467,6 +467,10 @@ function renderTreemap(stocks) {
       tile.addEventListener('mouseenter', e => showTooltip(stock, e));
       tile.addEventListener('mousemove', moveTooltip);
       tile.addEventListener('mouseleave', hideTooltip);
+      tile.addEventListener('touchstart', e => {
+        e.preventDefault();
+        showTooltip(stock, e.touches[0]);
+      }, { passive: false });
       industryEl.appendChild(tile);
     });
 
@@ -538,6 +542,10 @@ function moveTooltip(e) {
 }
 
 function hideTooltip() { document.getElementById('tooltip').classList.add('hidden'); }
+
+document.addEventListener('touchstart', e => {
+  if (!e.target.closest('.tm-tile')) hideTooltip();
+});
 
 // ── 按鈕綁定 ─────────────────────────────────────────────
 

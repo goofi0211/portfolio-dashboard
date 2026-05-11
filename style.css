@@ -241,8 +241,17 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
 }
 
 @media (max-width: 560px) {
-  .summary-grid    { grid-template-columns: 1fr 1fr; }
-  .card-value      { font-size: 1.2rem; }
+  .container       { padding: 1rem; }
+  h1               { font-size: 1.35rem; }
+  .summary-grid    { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .card            { padding: 1rem 1rem; }
+  .card-value      { font-size: 1.15rem; }
+  .chart-section   { padding: 1rem; }
+  .treemap-section { padding: 1rem; }
+  .section-header  { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .controls        { width: 100%; }
   .treemap         { height: 380px; }
+  .top10-wrapper   { height: 260px; }
+  .contribution-wrapper { height: 280px; }
   .history-chart-wrapper { height: 220px; }
 }
