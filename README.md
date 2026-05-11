@@ -251,6 +251,12 @@ const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 
 ## 更新紀錄
 
+### 2026-05-11
+- 改善手機 RWD：Treemap 支援觸控點擊顯示 tooltip（點其他區域消失）
+- 560px 以下縮減 container / card / chart-section padding，釋放內容空間
+- 走勢圖標題與控制按鈕改為垂直排列，避免手機上擠版
+- h1、card-value 字體在手機縮小，十大持股與損益貢獻圖高度適配手機螢幕
+
 ### 2026-05-08
 - 新增股票 / 現金比例圓環圖，與產業配置圓餅圖並排顯示於「資產配置」區塊
 - 現金等價物（SGOV、`type = 現金` 的持倉列）從產業配置、十大持股、損益貢獻、Treemap 中排除，避免持股比例失真
