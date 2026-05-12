@@ -15,22 +15,32 @@ function stocksOnly(stocks) {
 
 let portfolioStocks   = [];
 let portfolioHistory  = [];
+let portfolioSummary  = {};
 let colorMode         = 'daily';
 let historyMode       = 'absolute';
 let historyRange      = 'all';
 let contribMode       = 'industry';
+let currency          = 'USD';
+let exchangeRate      = 32;
 let historyChart      = null;
 let contributionChart = null;
 let top10Chart        = null;
+let industryChart     = null;
+let allocationChart   = null;
 
 // ── 進入點 ──────────────────────────────────────────────
 
 async function init() {
   try {
-    const res  = await fetch(GAS_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    render(data);
+    const [gasRes, fxRes] = await Promise.allSettled([
+      fetch(GAS_URL).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+      fetch('https://api.frankfurter.app/latest?from=USD&to=TWD').then(r => r.json()),
+    ]);
+    if (gasRes.status === 'rejected') throw gasRes.reason;
+    if (fxRes.status === 'fulfilled' && fxRes.value.rates && fxRes.value.rates.TWD) {
+      exchangeRate = fxRes.value.rates.TWD;
+    }
+    render(gasRes.value);
   } catch (err) {
     document.getElementById('loading').classList.add('hidden');
     const el = document.getElementById('error');
@@ -46,6 +56,7 @@ function render(data) {
   const { summary, stocks, history, updatedAt } = data;
   portfolioStocks  = stocks;
   portfolioHistory = history || [];
+  portfolioSummary = summary;
 
   document.getElementById('updated-at').textContent =
     '更新：' + new Date(updatedAt).toLocaleString('zh-TW');
@@ -157,7 +168,7 @@ function renderHistoryChart(history) {
     ];
     scales = {
       x:  { ticks: { color: '#4a5568', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#1a1f2e' } },
-      y:  { position: 'left',  ticks: { color: '#4a5568', font: { size: 11 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#1a1f2e' } },
+      y:  { position: 'left',  ticks: { color: '#4a5568', font: { size: 11 }, callback: v => formatUSD(v) }, grid: { color: '#1a1f2e' } },
       y2: { position: 'right', ticks: { color: '#f59e0b', font: { size: 11 }, callback: v => v.toFixed(1) + '%' }, grid: { drawOnChartArea: false } },
     };
   } else {
@@ -212,11 +223,12 @@ function filterByRange(history, range) {
 // ── 股票/現金配置圖 ──────────────────────────────────────
 
 function renderAllocationChart(stocks) {
+  if (allocationChart) { allocationChart.destroy(); allocationChart = null; }
   const cashValue  = stocks.filter(isCash).reduce((sum, s) => sum + s.marketValue, 0);
   const stockValue = stocks.filter(s => !isCash(s)).reduce((sum, s) => sum + s.marketValue, 0);
   const total      = cashValue + stockValue;
 
-  new Chart(document.getElementById('allocation-chart'), {
+  allocationChart = new Chart(document.getElementById('allocation-chart'), {
     type: 'doughnut',
     data: {
       labels: ['股票', '現金'],
@@ -234,6 +246,7 @@ function renderAllocationChart(stocks) {
 // ── 圓餅圖 ───────────────────────────────────────────────
 
 function renderPieChart(stocks) {
+  if (industryChart) { industryChart.destroy(); industryChart = null; }
   const filtered = stocksOnly(stocks);
   const colorMap = getIndustryColorMap(filtered);
   const industryMap = {};
@@ -242,7 +255,7 @@ function renderPieChart(stocks) {
   const values = labels.map(l => industryMap[l]);
   const total  = values.reduce((a, b) => a + b, 0);
 
-  new Chart(document.getElementById('industry-chart'), {
+  industryChart = new Chart(document.getElementById('industry-chart'), {
     type: 'doughnut',
     data: {
       labels,
@@ -390,7 +403,7 @@ function renderContributionChart(stocks) {
         },
       },
       scales: {
-        x: { ticks: { color: '#4a5568', font: { size: 11 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#1a1f2e' } },
+        x: { ticks: { color: '#4a5568', font: { size: 11 }, callback: v => formatUSD(v) }, grid: { color: '#1a1f2e' } },
         y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } },
       },
     },
@@ -589,6 +602,16 @@ function bindButtons() {
       renderContributionChart(portfolioStocks);
     });
   });
+
+  // 幣別切換
+  document.querySelectorAll('[data-currency]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-currency]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currency = btn.dataset.currency;
+      rerenderAll();
+    });
+  });
 }
 
 // ── 顏色 ─────────────────────────────────────────────────
@@ -611,14 +634,30 @@ function fmt(n) {
   return typeof n === 'number' ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 }
 
+function toDisplay(n) { return currency === 'TWD' ? n * exchangeRate : n; }
+
 function formatUSD(n) {
   if (typeof n !== 'number') return '—';
-  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const v = Math.abs(toDisplay(n));
+  if (currency === 'TWD') return 'NT$' + Math.round(v).toLocaleString('en-US');
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatSigned(n) {
   if (typeof n !== 'number') return '—';
-  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const v = toDisplay(n);
+  const abs = Math.abs(v);
+  if (currency === 'TWD') return (v >= 0 ? '+NT$' : '-NT$') + Math.round(abs).toLocaleString('en-US');
+  return (v >= 0 ? '+$' : '-$') + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function rerenderAll() {
+  renderSummaryCards(portfolioSummary, portfolioHistory);
+  renderHistoryChart(portfolioHistory);
+  renderAllocationChart(portfolioStocks);
+  renderPieChart(portfolioStocks);
+  renderTop10Chart(portfolioStocks);
+  renderContributionChart(portfolioStocks);
 }
 
 function formatPct(n) {
