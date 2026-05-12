@@ -16,7 +16,7 @@ Google Apps Script（API + 排程）
     ↓ JSON via HTTP GET（持倉 + 歷史快照）
     ↓ MailApp 每月 1 日寄月報
 GitHub Pages（前端）
-    → 5 張總覽卡片 + 走勢圖 + 圓餅圖 + 十大持股圖 + 貢獻圖 + Treemap
+    → 5 張總覽卡片 + 走勢圖 + 圓餅圖 + 十大持股圖 + 貢獻圖 + Treemap + 合理價分析 Tab
 ```
 
 | 層級 | 技術 |
@@ -189,11 +189,15 @@ Push 後 GitHub Pages 約 1 分鐘內自動更新。
 
 ### 更換 GAS URL
 
-如果需要換新的 GAS URL，修改 `app.js` 第一行：
+如果需要換新的 GAS URL，修改 `app.js` 開頭兩行：
 
 ```js
 const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+const FV_URL  = 'https://script.google.com/macros/s/YOUR_FV_SCRIPT_ID/exec';
 ```
+
+- `GAS_URL`：主資料 API（持倉 + 歷史快照）
+- `FV_URL`：合理價分析 API（五大估值法資料）
 
 ---
 
@@ -218,6 +222,10 @@ const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 
 **Q：月報沒有收到**
 - 確認 `sendMonthlyReport` 觸發器已設定，且 GAS 有 MailApp 授權（第一次執行會要求授權）
+
+**Q：合理價分析 Tab 顯示載入中但沒有資料**
+- 確認 `FV_URL` 填入 `app.js` 正確
+- 確認合理價 GAS 部署設定：執行身分＝「我」、誰可以存取＝「所有人」
 
 ---
 
@@ -261,6 +269,27 @@ const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
   ]
 }
 ```
+
+### 合理價 API（`FV_URL`）回傳格式
+
+```json
+[
+  {
+    "code": "AAPL",
+    "industry": "科技",
+    "score": 4,
+    "methods": {
+      "①殖利率": { "fairValue": 180, "currentPrice": 210, "status": "高估" },
+      "②P/B":    { "fairValue": 220, "currentPrice": 210, "status": "低估" },
+      "③PEG-3yr":{ "fairValue": 195, "currentPrice": 210, "status": "高估" },
+      "④P/E":    { "fairValue": 230, "currentPrice": 210, "status": "低估" },
+      "⑤資產":   { "fairValue": null, "currentPrice": 210, "status": "N/A" }
+    }
+  }
+]
+```
+
+> `score`：5 個方法中顯示「低估」的數量（0–5）
 
 ---
 
