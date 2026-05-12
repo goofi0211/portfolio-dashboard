@@ -1,4 +1,13 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyjT6RCtrJe6PNMx5vFfhvZmVbaqsCq-VTKu7o4p6nHRwfuByB5sQPtNnaxtWNErwDH/exec';
+const FV_URL  = 'https://script.google.com/macros/s/AKfycbyzZcvxgaVpTzUfeEkCFiH0ibR6i1OznVAfif4x65J3xAP9CMnJhh-aOeiWsQH_wbNE8g/exec';
+
+const FV_METHODS = [
+  { key: '①殖利率', label: '殖利率法' },
+  { key: '②P/B',    label: 'P/B 法'   },
+  { key: '③PEG-3yr', label: 'PEG 法'  },
+  { key: '④P/E',    label: 'P/E 法'   },
+  { key: '⑤資產',   label: '資產法'   },
+];
 
 const INDUSTRY_COLORS = [
   '#6366f1','#22d3ee','#f59e0b','#4ade80','#f87171',
@@ -16,6 +25,12 @@ function stocksOnly(stocks) {
 let portfolioStocks   = [];
 let portfolioHistory  = [];
 let portfolioSummary  = {};
+let fairValueData     = null;
+let fvLoaded          = false;
+let fvEventsBound     = false;
+let fvUndervalued     = false;
+let fvSearch          = '';
+let fvSortAsc         = false;
 let colorMode         = 'daily';
 let historyMode       = 'absolute';
 let historyRange      = 'all';
@@ -51,6 +66,7 @@ async function init() {
 
 function render(data) {
   document.getElementById('loading').classList.add('hidden');
+  document.getElementById('tab-nav').classList.remove('hidden');
   document.getElementById('main-content').classList.remove('hidden');
 
   const { summary, stocks, history, updatedAt } = data;
@@ -603,6 +619,18 @@ function bindButtons() {
     });
   });
 
+  // Tab 切換
+  document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('main-content').classList.toggle('hidden', tab !== 'overview');
+      document.getElementById('fv-content').classList.toggle('hidden', tab !== 'fairvalue');
+      if (tab === 'fairvalue') loadFairValue();
+    });
+  });
+
   // 幣別切換
   document.querySelectorAll('[data-currency]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -658,6 +686,137 @@ function rerenderAll() {
   renderPieChart(portfolioStocks);
   renderTop10Chart(portfolioStocks);
   renderContributionChart(portfolioStocks);
+}
+
+// ── 合理價分析 ───────────────────────────────────────────
+
+async function loadFairValue() {
+  if (fvLoaded) { renderFVTable(); return; }
+  document.getElementById('fv-loading-msg').classList.remove('hidden');
+  try {
+    const res  = await fetch(FV_URL);
+    fairValueData = await res.json();
+    fvLoaded  = true;
+    document.getElementById('fv-loading-msg').classList.add('hidden');
+    renderFVPage();
+  } catch(e) {
+    document.getElementById('fv-loading-msg').textContent = '合理價資料載入失敗：' + e.message;
+  }
+}
+
+function renderFVPage() {
+  const total    = fairValueData.length;
+  const uvCount  = fairValueData.filter(s => s['低估候選'] === '是').length;
+  const date     = fairValueData[0]?.['分析日期'] || '—';
+  document.getElementById('fv-chips').innerHTML =
+    `<span class="fv-chip">共 ${total} 支</span>` +
+    `<span class="fv-chip fv-chip--green">低估候選 ${uvCount} 支</span>` +
+    `<span class="fv-chip">分析日期 ${date}</span>`;
+  renderFVTable();
+  bindFVEvents();
+}
+
+function getFVFiltered() {
+  let items = [...fairValueData];
+  if (fvSearch)      items = items.filter(s => s['代號'].toUpperCase().includes(fvSearch.toUpperCase()));
+  if (fvUndervalued) items = items.filter(s => s['低估候選'] === '是');
+  items.sort((a, b) => fvSortAsc ? a['評分/9'] - b['評分/9'] : b['評分/9'] - a['評分/9']);
+  return items;
+}
+
+function renderFVTable() {
+  const items = getFVFiltered();
+  const wrap  = document.getElementById('fv-table-wrap');
+  if (!items.length) {
+    wrap.innerHTML = '<div class="fv-empty">找不到符合條件的股票</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="fv-table">
+      <div class="fv-thead">
+        <div>代號</div><div>現價 (USD)</div><div>評分</div><div>低估候選</div><div></div>
+      </div>
+      <div>${items.map((s, i) => renderFVRow(s, i)).join('')}</div>
+    </div>`;
+  wrap.querySelectorAll('.fv-row-header').forEach(el => {
+    el.addEventListener('click', () => {
+      const detail  = document.getElementById('fv-detail-' + el.dataset.idx);
+      const chevron = el.querySelector('.fv-chevron');
+      const isOpen  = detail.classList.contains('fv-detail--open');
+      wrap.querySelectorAll('.fv-detail').forEach(d => d.classList.remove('fv-detail--open'));
+      wrap.querySelectorAll('.fv-chevron').forEach(c => c.classList.remove('fv-chevron--open'));
+      if (!isOpen) { detail.classList.add('fv-detail--open'); chevron.classList.add('fv-chevron--open'); }
+    });
+  });
+}
+
+function renderFVRow(stock, idx) {
+  const score   = stock['評分/9'];
+  const scoreClass = score >= 7 ? 'positive' : score >= 4 ? 'neutral' : 'negative';
+  const isUV    = stock['低估候選'] === '是';
+  const price   = typeof stock['現價'] === 'number'
+    ? '$' + stock['現價'].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '—';
+  return `
+    <div class="fv-row">
+      <div class="fv-row-header" data-idx="${idx}">
+        <div class="fv-cell fv-code">${stock['代號']}</div>
+        <div class="fv-cell">${price}</div>
+        <div class="fv-cell"><span class="fv-score ${scoreClass}">${score}/9</span></div>
+        <div class="fv-cell">${isUV ? '<span class="fv-badge">低估</span>' : '<span class="fv-badge fv-badge--na">—</span>'}</div>
+        <div class="fv-cell fv-chevron">›</div>
+      </div>
+      <div class="fv-detail" id="fv-detail-${idx}">
+        <div class="fv-methods">${FV_METHODS.map(m => renderMethodCard(stock, m)).join('')}</div>
+      </div>
+    </div>`;
+}
+
+function renderMethodCard(stock, m) {
+  const fv     = stock[`${m.key}_合理價`];
+  const margin = stock[`${m.key}_安全邊際%`];
+  const prereq = stock[`${m.key}_前提符合`];
+  if (fv === 'N/A' || fv === null || fv === undefined) {
+    return `<div class="method-card method-card--na">
+      <div class="method-name">${m.label}</div>
+      <div class="method-fair-value">N/A</div>
+      <div class="method-margin">—</div>
+      <div class="method-prereq method-prereq--na">✗ 不適用</div>
+    </div>`;
+  }
+  const mNum   = typeof margin === 'number' ? margin : null;
+  const isPos  = mNum !== null && mNum > 0;
+  const fvFmt  = typeof fv === 'number'
+    ? '$' + fv.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : fv;
+  const mFmt   = mNum !== null ? (mNum > 0 ? '+' : '') + mNum.toFixed(1) + '%' : '—';
+  const prClass = prereq === '是' ? 'method-prereq--ok' : 'method-prereq--warn';
+  const prText  = prereq === '是' ? '✓ 前提符合' : '⚠ 前提不符';
+  return `<div class="method-card ${isPos ? 'method-card--positive' : 'method-card--negative'}">
+    <div class="method-name">${m.label}</div>
+    <div class="method-fair-value">${fvFmt}</div>
+    <div class="method-margin ${isPos ? 'positive' : 'negative'}">${mFmt}</div>
+    <div class="method-prereq ${prClass}">${prText}</div>
+  </div>`;
+}
+
+function bindFVEvents() {
+  if (fvEventsBound) return;
+  fvEventsBound = true;
+  document.getElementById('fv-search').addEventListener('input', e => {
+    fvSearch = e.target.value.trim();
+    renderFVTable();
+  });
+  document.getElementById('btn-fv-undervalued').addEventListener('click', function() {
+    fvUndervalued = !fvUndervalued;
+    this.classList.toggle('active', fvUndervalued);
+    renderFVTable();
+  });
+  document.getElementById('btn-fv-sort').addEventListener('click', function() {
+    fvSortAsc = !fvSortAsc;
+    this.textContent = fvSortAsc ? '評分 低→高' : '評分 高→低';
+    renderFVTable();
+  });
 }
 
 function formatPct(n) {

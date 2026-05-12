@@ -240,11 +240,231 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
 .error   { background: #2d1b1b; border: 1px solid #7f1d1d; border-radius: 8px; padding: 1rem 1.5rem; color: #fca5a5; margin-bottom: 1rem; }
 .hidden  { display: none; }
 
+/* ── Tab 導覽 ────────────────────────────── */
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid #2d3348;
+  margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.6rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn.active {
+  color: #e2e8f0;
+  border-bottom-color: #6366f1;
+}
+
+.tab-btn:hover:not(.active) { color: #94a3b8; }
+
+/* ── 合理價工具列 ─────────────────────────── */
+.fv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.fv-search {
+  flex: 1;
+  min-width: 160px;
+  background: #1e2130;
+  border: 1px solid #2d3348;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.fv-search::placeholder { color: #4a5568; }
+.fv-search:focus { border-color: #6366f1; }
+
+.fv-filters {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* ── 摘要 Chips ──────────────────────────── */
+.fv-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.fv-chip {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #1e2130;
+  border: 1px solid #2d3348;
+  border-radius: 20px;
+  padding: 0.2rem 0.75rem;
+}
+
+.fv-chip--green { color: #4ade80; border-color: #1a3d2b; background: #0f2318; }
+
+/* ── 合理價表格 ──────────────────────────── */
+.fv-loading-msg {
+  text-align: center;
+  padding: 3rem;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.fv-table {
+  background: #1e2130;
+  border: 1px solid #2d3348;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fv-thead {
+  display: grid;
+  grid-template-columns: 80px 1fr 70px 90px 28px;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: #161b27;
+  font-size: 0.72rem;
+  color: #4a5568;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fv-row { border-top: 1px solid #2d3348; }
+.fv-row:first-child { border-top: none; }
+
+.fv-row-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 70px 90px 28px;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+
+.fv-row-header:hover { background: rgba(99,102,241,0.06); }
+
+.fv-cell { font-size: 0.85rem; color: #e2e8f0; }
+
+.fv-code { font-weight: 700; font-size: 0.9rem; color: #f8fafc; }
+
+.fv-score {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.fv-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 20px;
+  background: #1a3d2b;
+  color: #4ade80;
+  border: 1px solid #2a5c40;
+}
+
+.fv-badge--na { background: transparent; color: #4a5568; border: none; }
+
+.fv-chevron {
+  color: #4a5568;
+  font-size: 1rem;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.fv-chevron--open { transform: rotate(90deg); }
+
+.fv-empty {
+  padding: 3rem;
+  text-align: center;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+/* ── 展開明細 ────────────────────────────── */
+.fv-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+}
+
+.fv-detail--open { max-height: 500px; }
+
+.fv-methods {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: #161b27;
+}
+
+/* ── 估值方法卡片 ─────────────────────────── */
+.method-card {
+  background: #1e2130;
+  border: 1px solid #2d3348;
+  border-left: 3px solid #2d3348;
+  border-radius: 8px;
+  padding: 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.method-card--positive { border-left-color: #4ade80; }
+.method-card--negative { border-left-color: #f87171; }
+.method-card--na       { opacity: 0.35; }
+
+.method-name {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.method-fair-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 0.1rem;
+}
+
+.method-margin {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.method-prereq {
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+.method-prereq--ok   { color: #4ade80; }
+.method-prereq--warn { color: #f59e0b; }
+.method-prereq--na   { color: #4a5568; }
+
 /* ── RWD ─────────────────────────────────── */
 @media (max-width: 900px) {
   .summary-grid    { grid-template-columns: repeat(3, 1fr); }
   .two-col-grid    { grid-template-columns: 1fr; }
   .allocation-grid { grid-template-columns: 1fr; }
+  .fv-methods      { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -261,4 +481,8 @@ h2 { font-size: 1rem; font-weight: 600; color: #94a3b8; }
   .top10-wrapper   { height: 260px; }
   .contribution-wrapper { height: 280px; }
   .history-chart-wrapper { height: 220px; }
+  .fv-methods      { grid-template-columns: repeat(2, 1fr); }
+  .fv-thead        { grid-template-columns: 60px 1fr 54px 72px 24px; padding: 0.5rem 0.85rem; }
+  .fv-row-header   { grid-template-columns: 60px 1fr 54px 72px 24px; padding: 0.75rem 0.85rem; }
+  .fv-toolbar      { gap: 0.5rem; }
 }

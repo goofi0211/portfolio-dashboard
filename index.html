@@ -23,6 +23,13 @@
     <div id="loading" class="loading">載入資料中...</div>
     <div id="error" class="error hidden"></div>
 
+    <!-- Tab 導覽 -->
+    <nav class="tab-nav hidden" id="tab-nav">
+      <button class="tab-btn active" data-tab="overview">總覽</button>
+      <button class="tab-btn" data-tab="fairvalue">合理價分析</button>
+    </nav>
+
+    <!-- 總覽 Tab -->
     <section id="main-content" class="hidden">
 
       <!-- 總覽卡片（5張） -->
@@ -127,6 +134,24 @@
         </div>
         <div id="treemap" class="treemap"></div>
       </div>
+
+    </section>
+
+    <!-- 合理價分析 Tab -->
+    <section id="fv-content" class="hidden">
+
+      <div class="fv-toolbar">
+        <input type="text" id="fv-search" class="fv-search" placeholder="搜尋代號（例如 AAPL）...">
+        <div class="fv-filters">
+          <button class="toggle-btn" id="btn-fv-undervalued">只看低估候選</button>
+          <button class="toggle-btn active" id="btn-fv-sort">評分 高→低</button>
+        </div>
+      </div>
+
+      <div class="fv-chips" id="fv-chips"></div>
+
+      <div id="fv-loading-msg" class="fv-loading-msg hidden">合理價資料載入中...</div>
+      <div id="fv-table-wrap"></div>
 
     </section>
   </div>
