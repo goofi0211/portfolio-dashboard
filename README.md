@@ -48,8 +48,15 @@ GitHub Pages（前端）
 - **對比 SPY 模式**：投資組合報酬率 vs SPY 報酬率（同起點 = 0%）
 - 時間範圍切換：30 天 / 90 天 / 1 年 / 全部
 
-#### 產業配置圓餅圖
-- 各產業市值占比，Hover 顯示金額與百分比
+#### 幣值切換
+- 右上角 USD / TWD 切換，自動從 api.frankfurter.app 抓取即時匯率
+- 所有總覽卡片、圖表 tooltip 金額即時換算為台幣（NT$）或美金（$）
+- 合理價分析頁面固定顯示 USD（美股計價）
+
+#### 資產配置圖表
+- **股票 / 現金圓環圖**：顯示持股與閒置現金的資產比例
+- **產業配置圓餅圖**：各產業市值占比，Hover 顯示金額與百分比
+- 現金等價物（SGOV、`type = 現金`）自動排除於持股圖表之外
 
 #### 十大持股橫條圖
 - 依市值排行前十名個股
@@ -65,6 +72,14 @@ GitHub Pages（前端）
 - 顏色切換：今日漲幅 / 未實現損益%（深淺代表幅度大小）
 - 按產業分組，有產業標籤
 - Hover 顯示完整明細（現價、股數、市值、買入均價、成本、損益、52 周高點）
+
+#### 合理價分析 Tab
+- 獨立分頁（SPA tab），資料從第二支 GAS API 懶載入（首次點擊才 fetch）
+- 搜尋欄：即時篩選股票代號
+- 篩選：只看低估候選（評分 ≥ 3 且有至少一個方法顯示低估）
+- 排序：評分 高→低 / 低→高 切換
+- 五大估值法展開卡片：殖利率法、P/B 法、PEG 法、P/E 法、資產法
+- 產業分類 chip 快速篩選
 
 #### 自動月報 Email
 - 每月 1 日自動寄 HTML 格式月報至 Google 帳號信箱
@@ -251,7 +266,14 @@ const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 
 ## 更新紀錄
 
-### 2026-05-11
+### 2026-05-11（UI/UX 優化）
+- 套用 IBM Plex Sans 字型，提升金融儀表板閱讀質感
+- 修正合理價篩選按鈕排版（`.fv-filters` toggle-group 包裝）
+- 修正各圖表區塊 h2 標題底部間距
+- 新增 `focus-visible` 鍵盤導航高亮，無障礙支援
+- 新增 `prefers-reduced-motion` 媒體查詢，尊重使用者動態偏好
+- 合理價表格加入水平捲動保護（mobile overflow）
+- 手機按鈕 touch target 最小高度（toggle 36px / tab 40px / fv-row 52px）
 - 改善手機 RWD：Treemap 支援觸控點擊顯示 tooltip（點其他區域消失）
 - 560px 以下縮減 container / card / chart-section padding，釋放內容空間
 - 走勢圖標題與控制按鈕改為垂直排列，避免手機上擠版
@@ -261,6 +283,8 @@ const GAS_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 - 新增股票 / 現金比例圓環圖，與產業配置圓餅圖並排顯示於「資產配置」區塊
 - 現金等價物（SGOV、`type = 現金` 的持倉列）從產業配置、十大持股、損益貢獻、Treemap 中排除，避免持股比例失真
 - Sheet 支援新增 `CASH` 列（`股票類型` 填「現金」）記錄帳戶閒置現金，自動納入現金比例計算
+- 新增 USD / TWD 幣值切換，自動從 api.frankfurter.app 抓取即時匯率
+- 新增「合理價分析」Tab，五大估值法展開卡片、搜尋、篩選、排序、產業 chip
 
 ### 2026-05-05
 - 新增十大持股橫條圖（依市值排行，顏色依產業分色，Hover 顯示資產比例與市值）
