@@ -14,6 +14,13 @@ const INDUSTRY_COLORS = [
   '#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9','#fbbf24',
 ];
 
+const DCA_DEFAULTS = [
+  { code: 'SPYM', pct: 30 },
+  { code: 'SPMO', pct: 30 },
+  { code: 'SMH',  pct: 25 },
+  { code: 'AVUV', pct: 15 },
+];
+
 const CASH_CODES = ['SGOV'];
 function isCash(s) { return CASH_CODES.includes(s.code) || s.type === '現金'; }
 function stocksOnly(stocks) {
@@ -21,6 +28,8 @@ function stocksOnly(stocks) {
   const total   = nonCash.reduce((sum, s) => sum + s.marketValue, 0);
   return nonCash.map(s => ({ ...s, assetRatio: total > 0 ? s.marketValue / total : 0 }));
 }
+
+let dcaPcts = DCA_DEFAULTS.map(d => d.pct);
 
 let portfolioStocks   = [];
 let portfolioHistory  = [];
@@ -627,7 +636,9 @@ function bindButtons() {
       const tab = btn.dataset.tab;
       document.getElementById('main-content').classList.toggle('hidden', tab !== 'overview');
       document.getElementById('fv-content').classList.toggle('hidden', tab !== 'fairvalue');
+      document.getElementById('dca-content').classList.toggle('hidden', tab !== 'dca');
       if (tab === 'fairvalue') loadFairValue();
+      if (tab === 'dca') renderDCAPage();
     });
   });
 
@@ -686,6 +697,82 @@ function rerenderAll() {
   renderPieChart(portfolioStocks);
   renderTop10Chart(portfolioStocks);
   renderContributionChart(portfolioStocks);
+}
+
+// ── 定期定額 ─────────────────────────────────────────────
+
+function renderDCAPage() {
+  const rows = document.getElementById('dca-rows');
+  rows.innerHTML = DCA_DEFAULTS.map((item, i) => {
+    const stock = portfolioStocks.find(s => s.code === item.code);
+    const price = stock ? '$' + fmt(stock.currentPrice) : '—';
+    return `
+      <div class="dca-alloc-row">
+        <span class="dca-code">${item.code}</span>
+        <div class="dca-pct-wrap">
+          <input type="number" class="dca-pct-input" data-idx="${i}" value="${dcaPcts[i]}" min="0" max="100" step="1">
+          <span class="dca-pct-sym">%</span>
+        </div>
+        <span class="dca-price">${price}</span>
+      </div>`;
+  }).join('');
+  updateDCATotalPct();
+  document.querySelectorAll('.dca-pct-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      dcaPcts[parseInt(e.target.dataset.idx)] = parseFloat(e.target.value) || 0;
+      updateDCATotalPct();
+    });
+  });
+  document.getElementById('btn-dca-calc').onclick = calcDCA;
+  document.getElementById('dca-amount').onkeydown = e => { if (e.key === 'Enter') calcDCA(); };
+}
+
+function updateDCATotalPct() {
+  const sum = dcaPcts.reduce((s, p) => s + p, 0);
+  const el = document.getElementById('dca-total-pct');
+  el.textContent = sum.toFixed(0) + '%';
+  el.className = 'dca-total-val ' + (Math.abs(sum - 100) < 0.5 ? 'positive' : 'negative');
+}
+
+function calcDCA() {
+  const amount = parseFloat(document.getElementById('dca-amount').value);
+  if (!amount || amount <= 0) return;
+
+  const sum = dcaPcts.reduce((s, p) => s + p, 0);
+  const warnEl = document.getElementById('dca-warn');
+  if (Math.abs(sum - 100) >= 0.5) {
+    document.getElementById('dca-warn-sum').textContent = sum.toFixed(1);
+    warnEl.classList.remove('hidden');
+    document.getElementById('dca-result').classList.add('hidden');
+    return;
+  }
+  warnEl.classList.add('hidden');
+
+  let totalSpent = 0;
+  const results = DCA_DEFAULTS.map((item, i) => {
+    const stock = portfolioStocks.find(s => s.code === item.code);
+    const price = stock ? stock.currentPrice : null;
+    const target = amount * dcaPcts[i] / 100;
+    if (!price || price <= 0) return { code: item.code, pct: dcaPcts[i], price: null, target, shares: null, cost: null };
+    const shares = Math.floor(target / price);
+    const cost = shares * price;
+    totalSpent += cost;
+    return { code: item.code, pct: dcaPcts[i], price, target, shares, cost };
+  });
+
+  document.getElementById('dca-result-rows').innerHTML = results.map(r => `
+    <div class="dca-result-row">
+      <span class="dca-code">${r.code}</span>
+      <span>${r.pct}%</span>
+      <span>${r.price ? '$' + fmt(r.price) : '—'}</span>
+      <span>$${fmt(r.target)}</span>
+      <span class="dca-result-shares">${r.shares !== null ? r.shares + ' 股' : '—'}</span>
+      <span>${r.cost !== null ? '$' + fmt(r.cost) : '—'}</span>
+    </div>`).join('');
+
+  document.getElementById('dca-result-spent').textContent = '$' + fmt(totalSpent);
+  document.getElementById('dca-result-remain').textContent = '$' + fmt(amount - totalSpent);
+  document.getElementById('dca-result').classList.remove('hidden');
 }
 
 // ── 合理價分析 ───────────────────────────────────────────

@@ -30,6 +30,7 @@
     <nav class="tab-nav hidden" id="tab-nav">
       <button class="tab-btn active" data-tab="overview">總覽</button>
       <button class="tab-btn" data-tab="fairvalue">合理價分析</button>
+      <button class="tab-btn" data-tab="dca">定期定額</button>
     </nav>
 
     <!-- 總覽 Tab -->
@@ -161,6 +162,62 @@
       <div id="fv-table-wrap"></div>
 
     </section>
+    <!-- 定期定額 Tab -->
+    <section id="dca-content" class="hidden">
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>定期定額計算器</h2>
+        </div>
+
+        <div class="dca-input-area">
+          <label class="dca-label">本月投入金額（USD）</label>
+          <div class="dca-input-row">
+            <span class="dca-input-prefix">$</span>
+            <input type="number" id="dca-amount" class="dca-amount-input" placeholder="1000" min="0" step="100">
+            <button id="btn-dca-calc" class="dca-calc-btn">計算</button>
+          </div>
+        </div>
+
+        <div class="dca-alloc-wrap">
+          <div class="dca-alloc-header">
+            <span>代號</span>
+            <span>配比</span>
+            <span>現價（USD）</span>
+          </div>
+          <div id="dca-rows"></div>
+          <div class="dca-alloc-total">
+            <span>合計配比</span>
+            <span id="dca-total-pct" class="dca-total-val">100%</span>
+            <span></span>
+          </div>
+        </div>
+
+        <div id="dca-warn" class="dca-warn hidden">⚠ 配比總和必須為 100%，目前合計 <span id="dca-warn-sum"></span>%</div>
+
+        <div id="dca-result" class="hidden">
+          <div class="dca-result-header-row">
+            <span>代號</span>
+            <span>配比</span>
+            <span>現價</span>
+            <span>目標金額</span>
+            <span>買入股數</span>
+            <span>實際花費</span>
+          </div>
+          <div id="dca-result-rows"></div>
+          <div class="dca-summary">
+            <div class="dca-summary-item">
+              <div class="dca-summary-label">總花費</div>
+              <div id="dca-result-spent" class="dca-summary-value">—</div>
+            </div>
+            <div class="dca-summary-item">
+              <div class="dca-summary-label">剩餘現金</div>
+              <div id="dca-result-remain" class="dca-summary-value positive">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <div id="tooltip" class="tooltip hidden"></div>
