@@ -81,6 +81,16 @@ GitHub Pages（前端）
 - 五大估值法展開卡片：殖利率法、P/B 法、PEG 法、P/E 法、資產法
 - 產業分類 chip 快速篩選
 
+#### 正2 計畫 Tab（00631L 定期定額＋加碼系統）
+- 投資邏輯、鐵律、SOP 完整文件見 `LEVERAGE_PLAN.md`
+- GAS `?action=taiex` API 抓取加權指數現值與歷史最高收盤（Yahoo ^TWII，快取 1 小時）
+- 自動計算目前回撤與加碼層級（−10% / −20% / −30% 三層），大字顯示「第幾層、本月該投多少」
+- 加碼觸發表：依歷史高點自動換算各層的指數觸發價位，高亮當前層級
+- 彈藥池追蹤：餘額／上限、進度條、「本月已加碼」一鍵扣除（localStorage 儲存）
+- 計畫參數（月扣金額、各層加碼金額）可調整，localStorage 持久化
+- API 失敗時可手動輸入指數與高點
+- 「完整計畫文件」可展開閱讀：前端 fetch `LEVERAGE_PLAN.md` 以 marked.js 渲染，文件單一來源、改 MD 即同步
+
 #### 自動月報 Email
 - 每月 1 日自動寄 HTML 格式月報至 Google 帳號信箱
 - 內容：本月市值變化、超越/落後 SPY 幅度、累積報酬、贏家/輸家 Top 3、產業配置、儀表板連結
@@ -294,6 +304,11 @@ const FV_URL  = 'https://script.google.com/macros/s/YOUR_FV_SCRIPT_ID/exec';
 ---
 
 ## 更新紀錄
+
+### 2026-06-13（正2 計畫）
+- 新增「正2 計畫」Tab：00631L 定期定額＋分層加碼系統（詳見 `LEVERAGE_PLAN.md`）
+- GAS 新增 `?action=taiex` API（加權指數現值 / 歷史最高收盤 / 回撤，**需重新部署 GAS 新版本**）
+- 加碼層級自動判定、觸發價位表、彈藥池追蹤、計畫參數設定（localStorage）
 
 ### 2026-05-11（UI/UX 優化）
 - 套用 IBM Plex Sans 字型，提升金融儀表板閱讀質感

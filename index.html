@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -31,6 +32,7 @@
       <button class="tab-btn active" data-tab="overview">總覽</button>
       <button class="tab-btn" data-tab="fairvalue">合理價分析</button>
       <button class="tab-btn" data-tab="dca">定期定額</button>
+      <button class="tab-btn" data-tab="lev">正2 計畫</button>
     </nav>
 
     <!-- 總覽 Tab -->
@@ -216,6 +218,107 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- 正2 加碼計畫 Tab -->
+    <section id="lev-content" class="hidden">
+
+      <!-- 本月動作（最重要的資訊放最上面） -->
+      <div class="lev-hero">
+        <div class="lev-tier-badge" id="lev-tier-badge">—</div>
+        <div class="lev-hero-text">
+          <div class="lev-action" id="lev-action">載入中...</div>
+          <div class="lev-action-sub" id="lev-action-sub">觸發基準：加權指數收盤 vs 歷史最高收盤，每月最後一個交易日為準</div>
+        </div>
+      </div>
+
+      <!-- 指數狀態卡片 -->
+      <div class="summary-grid lev-grid">
+        <div class="card">
+          <div class="card-label">加權指數</div>
+          <div class="card-value" id="lev-taiex">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">歷史最高收盤</div>
+          <div class="card-value" id="lev-ath">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">目前回撤</div>
+          <div class="card-value" id="lev-dd">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">本月總投入</div>
+          <div class="card-value" id="lev-total">—</div>
+          <div class="card-sub">月扣 ＋ 加碼</div>
+        </div>
+      </div>
+
+      <!-- API 失敗時的手動輸入 -->
+      <div class="chart-section hidden" id="lev-manual">
+        <h2>指數資料載入失敗，請手動輸入</h2>
+        <div class="lev-manual-row">
+          <label>加權指數現值 <input type="number" id="lev-manual-taiex" class="lev-input"></label>
+          <label>歷史最高收盤 <input type="number" id="lev-manual-ath" class="lev-input"></label>
+          <button id="lev-manual-apply" class="dca-calc-btn">套用</button>
+        </div>
+      </div>
+
+      <!-- 加碼觸發表 -->
+      <div class="chart-section">
+        <h2>加碼觸發表</h2>
+        <div id="lev-tier-table"></div>
+        <div class="lev-note">跌穿兩層也只按當前層級金額執行；每月最多加碼一次；指數創新高時觸發價位自動更新。</div>
+      </div>
+
+      <!-- 彈藥池 -->
+      <div class="chart-section">
+        <h2>加碼彈藥池</h2>
+        <div class="lev-ammo-row">
+          <label>目前餘額 <input type="number" id="lev-ammo-balance" class="lev-input" step="1000" min="0"></label>
+          <label>上限 <input type="number" id="lev-ammo-cap" class="lev-input" step="10000" min="0"></label>
+          <button id="lev-ammo-deduct" class="dca-calc-btn hidden">本月已加碼，扣除</button>
+        </div>
+        <div class="lev-ammo-bar"><div class="lev-ammo-fill" id="lev-ammo-fill"></div></div>
+        <div class="lev-ammo-pct" id="lev-ammo-pct">—</div>
+        <div class="lev-note">蓄滿後多餘的錢直接提高月扣；2008 級空頭打完彈藥就停，回到只剩月扣——這是設計，不是失敗。</div>
+      </div>
+
+      <!-- 計畫參數 -->
+      <div class="chart-section">
+        <h2>計畫參數</h2>
+        <div class="lev-settings-grid">
+          <label>每月定期定額 <input type="number" id="lev-set-monthly" class="lev-input" step="1000" min="0"></label>
+          <label>第 1 層加碼（−10%） <input type="number" id="lev-set-t1" class="lev-input" step="1000" min="0"></label>
+          <label>第 2 層加碼（−20%） <input type="number" id="lev-set-t2" class="lev-input" step="1000" min="0"></label>
+          <label>第 3 層加碼（−30%） <input type="number" id="lev-set-t3" class="lev-input" step="1000" min="0"></label>
+        </div>
+        <div class="lev-note">每年只在 1 月檢視一次參數，其他時間不要動。</div>
+      </div>
+
+      <!-- 鐵律 -->
+      <div class="chart-section lev-rules">
+        <h2>鐵律（違反任何一條 = 計畫失敗）</h2>
+        <ol>
+          <li>任何情況下<strong>不停扣、不賣出</strong>。帳面 −50% 時，唯一動作是看這張觸發表。</li>
+          <li><strong>不借錢、不融資、不質押</strong>加碼。槓桿疊槓桿是這個策略唯一的死法。</li>
+          <li><strong>不憑感覺操作</strong>。不因「還會再跌」延後加碼，不因「要反彈了」提前掏空彈藥。</li>
+          <li>加碼只用<strong>額外資金</strong>，生活預備金（6~12 個月）完全獨立，永遠不碰。</li>
+          <li>賣出只有兩個條件：達到目標，或論點失效（台積電失去領先 / 台海衝突）。</li>
+        </ol>
+        <div class="lev-note">我必須能承受的不是 −34%，是 −80%。彈藥池的真正功能不是報酬，是在暴跌時給我一份「有事可做的劇本」。完整邏輯展開下方文件閱讀。</div>
+      </div>
+
+      <!-- 完整計畫文件（讀取 LEVERAGE_PLAN.md 渲染） -->
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>完整計畫文件 — 邏輯・心法・策略</h2>
+          <div class="toggle-group">
+            <button class="toggle-btn" id="lev-doc-toggle">展開閱讀</button>
+          </div>
+        </div>
+        <div id="lev-doc" class="lev-doc hidden"></div>
+      </div>
+
     </section>
 
   </div>

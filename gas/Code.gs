@@ -8,12 +8,42 @@ const DASHBOARD_URL  = 'https://goofi0211.github.io/portfolio-dashboard/';
 // 部署設定：執行身分「我」，存取「所有人」
 
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'taiex') {
+    const output = ContentService.createTextOutput(JSON.stringify(getTaiexStatus()));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
   const portfolio = getPortfolioData();
   const history   = getHistoryData();
   const result    = Object.assign({}, portfolio, { history });
   const output    = ContentService.createTextOutput(JSON.stringify(result));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
+}
+
+// ─── 加權指數狀態（正2 加碼計畫分頁用）──────────────────
+// 回傳台股加權指數現值、歷史最高收盤、目前回撤，快取 1 小時
+
+function getTaiexStatus() {
+  const cache = CacheService.getScriptCache();
+  const hit   = cache.get('taiexStatus');
+  if (hit) return JSON.parse(hit);
+
+  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1wk&range=max';
+  const res = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText());
+  const r   = res.chart.result[0];
+  const closes = r.indicators.quote[0].close.filter(function (c) { return c != null; });
+  const last   = r.meta.regularMarketPrice || closes[closes.length - 1];
+  const ath    = Math.max.apply(null, closes.concat([last]));
+
+  const out = {
+    taiex:     last,
+    ath:       ath,
+    drawdown:  last / ath - 1,
+    updatedAt: new Date().toISOString(),
+  };
+  cache.put('taiexStatus', JSON.stringify(out), 3600);
+  return out;
 }
 
 // ─── 讀取持倉 ────────────────────────────────────────────

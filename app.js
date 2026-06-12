@@ -637,8 +637,10 @@ function bindButtons() {
       document.getElementById('main-content').classList.toggle('hidden', tab !== 'overview');
       document.getElementById('fv-content').classList.toggle('hidden', tab !== 'fairvalue');
       document.getElementById('dca-content').classList.toggle('hidden', tab !== 'dca');
+      document.getElementById('lev-content').classList.toggle('hidden', tab !== 'lev');
       if (tab === 'fairvalue') loadFairValue();
       if (tab === 'dca') renderDCAPage();
+      if (tab === 'lev') loadLevPlan();
     });
   });
 
@@ -904,6 +906,205 @@ function bindFVEvents() {
     this.textContent = fvSortAsc ? '評分 低→高' : '評分 高→低';
     renderFVTable();
   });
+}
+
+// ── 正2 加碼計畫 ─────────────────────────────────────────
+
+const LEV_DEFAULTS = {
+  monthly: 10000,           // 每月定期定額（00631L）
+  tiers:   [10000, 25000, 40000], // 第 1/2/3 層加碼金額
+  ammoCap: 180000,          // 彈藥池上限（月扣的 12~18 倍）
+  ammoBalance: 0,
+};
+const LEV_THRESHOLDS = [-0.10, -0.20, -0.30];
+const LEV_TIER_NAMES = ['第 0 層 · 正常', '第 1 層 · 加碼', '第 2 層 · 加碼', '第 3 層 · 全力加碼'];
+
+let levConfig      = loadLevConfig();
+let levMarket      = null;  // { taiex, ath, updatedAt }
+let levFetched     = false;
+let levEventsBound = false;
+
+function loadLevConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('levPlan') || '{}');
+    return Object.assign({}, LEV_DEFAULTS, saved, { tiers: saved.tiers || LEV_DEFAULTS.tiers.slice() });
+  } catch (e) {
+    return Object.assign({}, LEV_DEFAULTS, { tiers: LEV_DEFAULTS.tiers.slice() });
+  }
+}
+
+function saveLevConfig() { localStorage.setItem('levPlan', JSON.stringify(levConfig)); }
+
+function fmtNT(n) { return typeof n === 'number' ? 'NT$' + Math.round(n).toLocaleString('en-US') : '—'; }
+
+function levTier(dd) {
+  if (dd <= LEV_THRESHOLDS[2]) return 3;
+  if (dd <= LEV_THRESHOLDS[1]) return 2;
+  if (dd <= LEV_THRESHOLDS[0]) return 1;
+  return 0;
+}
+
+async function loadLevPlan() {
+  bindLevEvents();
+  if (!levFetched) {
+    try {
+      const res = await fetch(GAS_URL + '?action=taiex');
+      const d   = await res.json();
+      if (d && d.taiex > 0 && d.ath > 0) { levMarket = d; levFetched = true; }
+    } catch (e) { /* 改用手動輸入 */ }
+    document.getElementById('lev-manual').classList.toggle('hidden', levMarket !== null);
+  }
+  renderLevPlan();
+}
+
+function renderLevPlan() {
+  const badge  = document.getElementById('lev-tier-badge');
+  const action = document.getElementById('lev-action');
+
+  // 指數卡片
+  if (levMarket) {
+    const dd = levMarket.taiex / levMarket.ath - 1;
+    document.getElementById('lev-taiex').textContent = Math.round(levMarket.taiex).toLocaleString('en-US');
+    document.getElementById('lev-ath').textContent   = Math.round(levMarket.ath).toLocaleString('en-US');
+    const ddEl = document.getElementById('lev-dd');
+    ddEl.textContent = (dd * 100).toFixed(1) + '%';
+    ddEl.className   = 'card-value ' + (dd <= LEV_THRESHOLDS[0] ? 'negative' : 'neutral');
+
+    const tier  = levTier(dd);
+    const extra = tier === 0 ? 0 : levConfig.tiers[tier - 1];
+    badge.textContent = '第 ' + tier + ' 層';
+    badge.className   = 'lev-tier-badge lev-tier--' + tier;
+    if (tier === 0) {
+      action.textContent = '本月動作：定期定額 ' + fmtNT(levConfig.monthly) + '，不加碼';
+    } else {
+      const enough = levConfig.ammoBalance >= extra;
+      action.textContent = '本月動作：月扣 ' + fmtNT(levConfig.monthly) + ' ＋ 加碼 ' + fmtNT(extra)
+        + (enough ? '' : '（彈藥不足，剩 ' + fmtNT(levConfig.ammoBalance) + '，有多少打多少）');
+    }
+    document.getElementById('lev-total').textContent =
+      fmtNT(levConfig.monthly + (tier === 0 ? 0 : Math.min(extra, levConfig.ammoBalance)));
+    document.getElementById('lev-ammo-deduct').classList.toggle('hidden', tier === 0 || levConfig.ammoBalance <= 0);
+  } else {
+    badge.textContent  = '—';
+    badge.className    = 'lev-tier-badge';
+    action.textContent = '無法取得指數資料，請在下方手動輸入';
+  }
+
+  renderLevTierTable();
+  renderLevAmmo();
+  renderLevSettings();
+}
+
+function renderLevTierTable() {
+  const dd   = levMarket ? levMarket.taiex / levMarket.ath - 1 : null;
+  const tier = dd !== null ? levTier(dd) : -1;
+  const ath  = levMarket ? levMarket.ath : null;
+  const px   = mult => ath ? Math.round(ath * mult).toLocaleString('en-US') : '—';
+
+  const rows = [
+    { range: '0 ~ −10%',     idx: '> ' + px(0.9),                  act: '只做月扣，不動作' },
+    { range: '−10% ~ −20%',  idx: px(0.9) + ' ~ ' + px(0.8),       act: '額外加碼 ' + fmtNT(levConfig.tiers[0]) },
+    { range: '−20% ~ −30%',  idx: px(0.8) + ' ~ ' + px(0.7),       act: '額外加碼 ' + fmtNT(levConfig.tiers[1]) },
+    { range: '−30% 以下',    idx: '< ' + px(0.7),                  act: '額外加碼 ' + fmtNT(levConfig.tiers[2]) + '，打完為止' },
+  ];
+
+  document.getElementById('lev-tier-table').innerHTML = `
+    <div class="lev-table">
+      <div class="lev-thead"><div>層級</div><div>大盤距高點</div><div>加權指數區間</div><div>當月動作</div></div>
+      ${rows.map((r, i) => `
+        <div class="lev-row ${i === tier ? 'lev-row--active lev-row--t' + i : ''}">
+          <div>${LEV_TIER_NAMES[i]}${i === tier ? '　◀ 現在' : ''}</div>
+          <div>${r.range}</div><div>${r.idx}</div><div>${r.act}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderLevAmmo() {
+  document.getElementById('lev-ammo-balance').value = levConfig.ammoBalance;
+  document.getElementById('lev-ammo-cap').value     = levConfig.ammoCap;
+  const pct = levConfig.ammoCap > 0 ? Math.min(100, levConfig.ammoBalance / levConfig.ammoCap * 100) : 0;
+  document.getElementById('lev-ammo-fill').style.width = pct + '%';
+  document.getElementById('lev-ammo-pct').textContent =
+    fmtNT(levConfig.ammoBalance) + ' / ' + fmtNT(levConfig.ammoCap) + '（' + pct.toFixed(0) + '%）'
+    + (pct >= 100 ? '　已蓄滿：多餘的錢直接提高月扣' : '');
+}
+
+function renderLevSettings() {
+  document.getElementById('lev-set-monthly').value = levConfig.monthly;
+  document.getElementById('lev-set-t1').value      = levConfig.tiers[0];
+  document.getElementById('lev-set-t2').value      = levConfig.tiers[1];
+  document.getElementById('lev-set-t3').value      = levConfig.tiers[2];
+}
+
+function bindLevEvents() {
+  if (levEventsBound) return;
+  levEventsBound = true;
+
+  const num = el => Math.max(0, parseFloat(el.value) || 0);
+
+  document.getElementById('lev-ammo-balance').addEventListener('change', e => {
+    levConfig.ammoBalance = num(e.target); saveLevConfig(); renderLevPlan();
+  });
+  document.getElementById('lev-ammo-cap').addEventListener('change', e => {
+    levConfig.ammoCap = num(e.target); saveLevConfig(); renderLevPlan();
+  });
+  [['lev-set-monthly', v => levConfig.monthly = v],
+   ['lev-set-t1', v => levConfig.tiers[0] = v],
+   ['lev-set-t2', v => levConfig.tiers[1] = v],
+   ['lev-set-t3', v => levConfig.tiers[2] = v]].forEach(([id, set]) => {
+    document.getElementById(id).addEventListener('change', e => {
+      set(num(e.target)); saveLevConfig(); renderLevPlan();
+    });
+  });
+
+  document.getElementById('lev-ammo-deduct').addEventListener('click', () => {
+    if (!levMarket) return;
+    const tier = levTier(levMarket.taiex / levMarket.ath - 1);
+    if (tier === 0) return;
+    const amount = Math.min(levConfig.tiers[tier - 1], levConfig.ammoBalance);
+    levConfig.ammoBalance -= amount;
+    saveLevConfig(); renderLevPlan();
+  });
+
+  document.getElementById('lev-manual-apply').addEventListener('click', () => {
+    const taiex = parseFloat(document.getElementById('lev-manual-taiex').value);
+    const ath   = parseFloat(document.getElementById('lev-manual-ath').value);
+    if (taiex > 0 && ath > 0) {
+      levMarket = { taiex, ath, updatedAt: new Date().toISOString() };
+      renderLevPlan();
+    }
+  });
+
+  document.getElementById('lev-doc-toggle').addEventListener('click', toggleLevDoc);
+}
+
+// ── 完整計畫文件（LEVERAGE_PLAN.md 展開閱讀）────────────
+
+let levDocLoaded = false;
+
+async function toggleLevDoc() {
+  const doc = document.getElementById('lev-doc');
+  const btn = document.getElementById('lev-doc-toggle');
+  const opening = doc.classList.contains('hidden');
+
+  if (opening && !levDocLoaded) {
+    doc.innerHTML = '<div class="lev-note">文件載入中...</div>';
+    doc.classList.remove('hidden');
+    try {
+      const res = await fetch('LEVERAGE_PLAN.md');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const md = await res.text();
+      doc.innerHTML = marked.parse(md);
+      levDocLoaded = true;
+    } catch (e) {
+      doc.innerHTML = '<div class="lev-note">文件載入失敗：' + e.message
+        + '（本機直接開啟 index.html 無法讀取檔案，請透過 GitHub Pages 或本機伺服器瀏覽）</div>';
+    }
+  } else {
+    doc.classList.toggle('hidden', !opening);
+  }
+  btn.textContent = opening ? '收合' : '展開閱讀';
+  btn.classList.toggle('active', opening);
 }
 
 function formatPct(n) {
