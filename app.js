@@ -727,6 +727,114 @@ function renderDCAPage() {
   });
   document.getElementById('btn-dca-calc').onclick = calcDCA;
   document.getElementById('dca-amount').onkeydown = e => { if (e.key === 'Enter') calcDCA(); };
+
+  renderUSRebalStatus();
+  document.getElementById('us-rebal-result').innerHTML = '';
+  document.getElementById('btn-us-rebal').onclick = renderUSRebalResult;
+  document.getElementById('us-doc-toggle').onclick = toggleUSDoc;
+}
+
+// ── 美股 ETF 計畫：年度帶寬再平衡 ─────────────────────────
+
+const US_BAND = 15;  // 帶寬（百分點）
+
+function computeUSRebalance() {
+  const holdings = DCA_DEFAULTS.map(t => {
+    const stock = portfolioStocks.find(s => s.code === t.code);
+    return {
+      code: t.code,
+      target: t.pct,
+      price: stock ? stock.currentPrice : null,
+      mv: stock ? stock.marketValue : 0,
+    };
+  });
+  const total = holdings.reduce((s, h) => s + h.mv, 0);
+  holdings.forEach(h => {
+    h.weight  = total > 0 ? h.mv / total * 100 : 0;
+    h.ceiling = h.target + US_BAND;
+    h.breach  = h.weight > h.ceiling;
+    h.deltaMv = total * h.target / 100 - h.mv;     // 正 = 買，負 = 賣
+    h.deltaShares = (h.price && h.price > 0) ? Math.round(h.deltaMv / h.price) : null;
+  });
+  return { holdings, total, triggered: holdings.some(h => h.breach) };
+}
+
+function renderUSRebalStatus() {
+  const el = document.getElementById('us-rebal-status');
+  const r  = computeUSRebalance();
+  if (r.total <= 0) {
+    el.innerHTML = '<div class="lev-note">尚未在投資組合中偵測到 SPYM／SPMO／SMH／AVUV 持股，無法計算權重。</div>';
+    return;
+  }
+  const rows = r.holdings.map(h => `
+    <div class="lev-row ${h.breach ? 'lev-row--active lev-row--t3' : ''}">
+      <div>${h.code}${h.breach ? '　◀ 超過上限' : ''}</div>
+      <div>${h.weight.toFixed(1)}%</div>
+      <div>${h.target}%</div>
+      <div>${h.ceiling}%</div>
+    </div>`).join('');
+  const closest = r.holdings.reduce((a, b) => (b.weight - b.ceiling > a.weight - a.ceiling ? b : a));
+  const banner = r.triggered
+    ? '<div class="us-banner us-banner--warn">⚠ 觸發再平衡：有持股超過上限，按「產生操作建議」拉回目標權重。</div>'
+    : `<div class="us-banner us-banner--ok">✓ 目前無需再平衡。最接近上限：${closest.code} ${closest.weight.toFixed(1)}% ／ 上限 ${closest.ceiling}%。</div>`;
+  el.innerHTML = banner +
+    '<div class="lev-table"><div class="lev-thead"><div>代號</div><div>目前權重</div><div>目標</div><div>上限</div></div>' +
+    rows + '</div>';
+}
+
+function renderUSRebalResult() {
+  const el = document.getElementById('us-rebal-result');
+  const r  = computeUSRebalance();
+  if (r.total <= 0) { el.innerHTML = ''; return; }
+  const rows = r.holdings.map(h => {
+    const sell = h.deltaMv < 0;
+    const flat = h.deltaShares !== null && Math.abs(h.deltaShares) === 0;
+    const act  = h.deltaShares === null ? '—'
+      : flat ? '不動'
+      : (sell ? '賣 ' : '買 ') + Math.abs(h.deltaShares) + ' 股';
+    const cls  = (h.deltaShares === null || flat) ? '' : (sell ? 'negative' : 'positive');
+    const amt  = h.deltaShares === null ? '' : '≈ ' + formatUSD(Math.abs(h.deltaMv));
+    return `<div class="lev-row">
+      <div>${h.code}</div>
+      <div>${h.weight.toFixed(1)}% → ${h.target}%</div>
+      <div class="${cls}">${act}</div>
+      <div>${amt}</div>
+    </div>`;
+  }).join('');
+  const banner = r.triggered
+    ? '<div class="us-banner us-banner--warn">觸發上限：以下操作將整籃拉回 30／30／25／15。</div>'
+    : '<div class="us-banner us-banner--ok">未觸發上限——依紀律本月可不動作。以下僅供參考。</div>';
+  el.innerHTML = banner +
+    '<div class="lev-table"><div class="lev-thead"><div>代號</div><div>權重調整</div><div>操作</div><div>金額</div></div>' +
+    rows + '</div>';
+}
+
+// ── 美股計畫完整文件（US_PLAN.md 展開閱讀）──────────────
+
+let usDocLoaded = false;
+
+async function toggleUSDoc() {
+  const doc = document.getElementById('us-doc');
+  const btn = document.getElementById('us-doc-toggle');
+  const opening = doc.classList.contains('hidden');
+
+  if (opening && !usDocLoaded) {
+    doc.innerHTML = '<div class="lev-note">文件載入中...</div>';
+    doc.classList.remove('hidden');
+    try {
+      const res = await fetch('US_PLAN.md');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      doc.innerHTML = marked.parse(await res.text());
+      usDocLoaded = true;
+    } catch (e) {
+      doc.innerHTML = '<div class="lev-note">文件載入失敗：' + e.message
+        + '（本機直接開啟 index.html 無法讀取檔案，請透過 GitHub Pages 或本機伺服器瀏覽）</div>';
+    }
+  } else {
+    doc.classList.toggle('hidden', !opening);
+  }
+  btn.textContent = opening ? '收合' : '展開閱讀';
+  btn.classList.toggle('active', opening);
 }
 
 function updateDCATotalPct() {

@@ -31,7 +31,7 @@
     <nav class="tab-nav hidden" id="tab-nav">
       <button class="tab-btn active" data-tab="overview">總覽</button>
       <button class="tab-btn" data-tab="fairvalue">合理價分析</button>
-      <button class="tab-btn" data-tab="dca">定期定額</button>
+      <button class="tab-btn" data-tab="dca">美股計畫</button>
       <button class="tab-btn" data-tab="lev">正2 計畫</button>
     </nav>
 
@@ -164,8 +164,18 @@
       <div id="fv-table-wrap"></div>
 
     </section>
-    <!-- 定期定額 Tab -->
+    <!-- 美股 ETF 計畫 Tab -->
     <section id="dca-content" class="hidden">
+
+      <!-- 本月動作 -->
+      <div class="lev-hero">
+        <div class="lev-tier-badge us-badge">每月</div>
+        <div class="lev-hero-text">
+          <div class="lev-action">投入 $2,500，固定按 SPYM 30 ／ SPMO 30 ／ SMH 25 ／ AVUV 15 買進，不看權重、不擇時。</div>
+          <div class="lev-action-sub">再平衡一年只做一次，每年 1 月：任一檔超過上限才動，否則完全不動。帶寬 ±15pp。</div>
+        </div>
+      </div>
+
       <div class="chart-section">
         <div class="section-header">
           <h2>定期定額計算器</h2>
@@ -218,6 +228,42 @@
           </div>
         </div>
       </div>
+
+      <!-- 年度再平衡 -->
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>年度再平衡（每年 1 月）· 帶寬 ±15pp</h2>
+          <button id="btn-us-rebal" class="dca-calc-btn">產生操作建議</button>
+        </div>
+        <div id="us-rebal-status"></div>
+        <div id="us-rebal-result"></div>
+        <div class="lev-note">目標 SPYM 30 ／ SPMO 30 ／ SMH 25 ／ AVUV 15；上限 = 目標 +15pp（SPYM 45 ／ SPMO 45 ／ SMH 40 ／ AVUV 30）。任一檔越線才整籃拉回目標，否則本月不動。股數為依現價的估算，下單以券商實際成交為準。</div>
+      </div>
+
+      <!-- 心法 -->
+      <div class="chart-section lev-rules">
+        <h2>心法（鐵律）</h2>
+        <ol>
+          <li>月扣<strong>永不停、永不憑感覺擇時</strong>。每月固定 30/30/25/15，不看權重、不看新聞。</li>
+          <li>再平衡<strong>一年只做一次，只在 1 月</strong>。其他 11 個月不看權重、不動手。</li>
+          <li><strong>帶寬沒被突破，就什麼都不做</strong>。不因 SMH 漲很多手癢提前砍，也不延後砍。</li>
+          <li><strong>不囤現金等崩盤</strong>。想買跌的衝動，由再平衡時自動買進落後的那檔滿足。</li>
+          <li><strong>賣出只在再平衡時發生</strong>，且只賣超過上限的部分。</li>
+        </ol>
+        <div class="lev-note">我整體資產高度押注同一件事：台股正2（2x 台積電）＋ SMH（含 TSM）＋ SPMO（AI 動能）＋ 台灣科技業收入。美股這塊名義上分散，實質上和台股是同一個 AI／半導體賭注——我接受，但必須隨時記得。完整邏輯展開下方文件閱讀。</div>
+      </div>
+
+      <!-- 完整計畫文件（讀取 US_PLAN.md 渲染） -->
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>完整計畫文件 — 邏輯・心法・策略</h2>
+          <div class="toggle-group">
+            <button class="toggle-btn" id="us-doc-toggle">展開閱讀</button>
+          </div>
+        </div>
+        <div id="us-doc" class="lev-doc hidden"></div>
+      </div>
+
     </section>
 
     <!-- 正2 加碼計畫 Tab -->
